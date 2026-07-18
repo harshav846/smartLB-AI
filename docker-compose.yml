@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # Internal Neon PostgreSQL emulation for Local Testing
+  database:
+    image: postgres:15-alpine
+    container_name: smartlb-postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smartlb-net
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: smartlb-api-gateway
+    depends_on:
+      - database
+    networks:
+      - smartlb-net
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: smartlb-auth-service
+    depends_on:
+      - database
+    networks:
+      - smartlb-net
+
+  # Customer Service
+  customer-service:
+    build:
+      context: ./services/customer-service
+      dockerfile: Dockerfile
+    container_name: smartlb-customer-service
+    depends_on:
+      - database
+    networks:
+      - smartlb-net
+
+  # Admin Service
+  admin-service:
+    build:
+      context: ./services/admin-service
+      dockerfile: Dockerfile
+    container_name: smartlb-admin-service
+    depends_on:
+      - database
+    networks:
+      - smartlb-net
+
+  # Load Balancer Service
+  loadbalancer-service:
+    build:
+      context: ./services/loadbalancer-service
+      dockerfile: Dockerfile
+    container_name: smartlb-loadbalancer-service
+    depends_on:
+      - database
+      - ai-service
+    networks:
+      - smartlb-net
+
+  # Monitoring Service
+  monitoring-service:
+    build:
+      context: ./services/monitoring-service
+      dockerfile: Dockerfile
+    container_name: smartlb-monitoring-service
+    depends_on:
+      - database
+    networks:
+      - smartlb-net
+
+  # Autoscaling Service
+  autoscaling-service:
+    build:
+      context: ./services/autoscaling-service
+      dockerfile: Dockerfile
+    container_name: smartlb-autoscaling-service
+    depends_on:
+      - database
+    networks:
+      - smartlb-net
+
+  # AI Engine Service
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    container_name: smartlb-ai-service
+    networks:
+      - smartlb-net
+
+  # UI Portal
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smartlb-frontend
+    networks:
+      - smartlb-net
+
+  # Ingress Proxy NGINX
+  nginx:
+    build:
+      context: ./infrastructure/nginx
+      dockerfile: Dockerfile
+    container_name: smartlb-nginx
+    depends_on:
+      - frontend
+      - api-gateway
+    networks:
+      - smartlb-net
+
+  # Simulated Spring Boot Backend Target Servers
+  backend-server-1:
+    build:
+      context: ./backend-servers/server-1
+      dockerfile: Dockerfile
+    container_name: smartlb-backend-1
+    networks:
+      - smartlb-net
+
+  backend-server-2:
+    build:
+      context: ./backend-servers/server-2
+      dockerfile: Dockerfile
+    container_name: smartlb-backend-2
+    networks:
+      - smartlb-net
+
+  backend-server-3:
+    build:
+      context: ./backend-servers/server-3
+      dockerfile: Dockerfile
+    container_name: smartlb-backend-3
+    networks:
+      - smartlb-net
+
+  backend-server-4:
+    build:
+      context: ./backend-servers/server-4
+      dockerfile: Dockerfile
+    container_name: smartlb-backend-4
+    networks:
+      - smartlb-net
+
+  backend-server-5:
+    build:
+      context: ./backend-servers/server-5
+      dockerfile: Dockerfile
+    container_name: smartlb-backend-5
+    networks:
+      - smartlb-net
+
+networks:
+  smartlb-net:
+    name: ${DOCKER_NETWORK:-smartlb-network}
+    driver: bridge
+
+volumes:
+  postgres_data:

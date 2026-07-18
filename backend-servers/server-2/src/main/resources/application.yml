@@ -1,0 +1,6 @@
+server:
+  port: ${BACKEND_PORT:5002}
+
+spring:
+  application:
+    name: backend-server-2

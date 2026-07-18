@@ -1,0 +1,3 @@
+#!/bin/sh
+# Minimal Unix Maven wrapper script executor
+exec mvn "$@"

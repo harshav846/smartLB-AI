@@ -1,0 +1,655 @@
+openapi: 3.0.3
+info:
+  title: SmartLB-AI Authentication Service API
+  description: |
+    REST API specification for the Authentication and Tenant Registration Service of SmartLB-AI.
+    Enforces tenant isolation, secure JWT lifecycle, password hashing, and domain verification.
+  version: 1.1.0
+servers:
+  - url: http://localhost:8080/api/auth
+    description: API Gateway routed path
+  - url: http://localhost:8081/api/auth
+    description: Authentication Microservice Direct Port
+paths:
+  /register-organization:
+    post:
+      summary: Register a new Client Organization and its first ORG_ADMIN user
+      description: |
+        Registers a tenant organization along with its initial administrator user.
+        Generates a verification token and triggers email verification procedures.
+      operationId: registerOrganization
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterOrganizationRequest'
+      responses:
+        '201':
+          description: Organization and administrator user successfully registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterOrganizationResponse'
+        '400':
+          description: Payload validation failed (e.g. invalid email format, weak password, or duplicate slug).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict (Email or organization domain/slug is already registered).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /login:
+    post:
+      summary: Authenticate User Credentials
+      description: |
+        Validates email and password, returning short-lived access JWT tokens and
+        long-lived refresh tokens. Increments failed login counters upon failure.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful. Returns tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtAuthResponse'
+        '400':
+          description: Invalid inputs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication failed. Invalid credentials or suspended account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /refresh:
+    post:
+      summary: Refresh Access Token
+      description: Validates refresh token and generates a new active short-lived access JWT.
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtAuthResponse'
+        '401':
+          description: Invalid or expired Refresh Token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logout:
+    post:
+      summary: Invalidate user session
+      description: Decrypts JWT session token and invalidates active refresh token registers in database.
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Session terminated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+        '401':
+          description: Authentication credentials missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /verify-email:
+    get:
+      summary: Verify User Email Address
+      description: Marks user status as VERIFIED after reading query token matches verification hash.
+      operationId: verifyEmail
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: Cryptographically secure verification token sent to user's email.
+          schema:
+            type: string
+            example: v1_b3a5083096674ec695fbf8c04c1d93b9
+      responses:
+        '200':
+          description: Email verified successfully. User is now active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+        '400':
+          description: Verification token is invalid, expired, or already used.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /resend-verification:
+    post:
+      summary: Resend Verification Email Link
+      description: Generates a brand new email verification token and triggers email notifications.
+      operationId: resendVerification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendVerificationRequest'
+      responses:
+        '200':
+          description: Verification link has been sent if the email exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+        '400':
+          description: Email validation failed or user status is already verified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /forgot-password:
+    post:
+      summary: Request Password Reset Link
+      description: Generates password token valid for 1 hour and sends recovery instructions email.
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Recovery link has been sent if the email matches.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+        '400':
+          description: Invalid email parsing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reset-password:
+    post:
+      summary: Reset User Password
+      description: Validates recovery token and updates user password in PostgreSQL database using hash encoders.
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+        '400':
+          description: Token is expired/invalid or password does not pass rules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /change-password:
+    post:
+      summary: Change Password for Authenticated User
+      description: Evaluates active old password validation before writing new credential hash into DB.
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessageResponse'
+        '400':
+          description: Validation checks failed (e.g. wrong old password, weak new password).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized access.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /me:
+    get:
+      summary: Retrieve Authenticated User Profile
+      description: Returns context profile attributes of the currently logged-in account.
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Returns user profile context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Bearer Token absent, invalid, or expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /check-email:
+    get:
+      summary: Check email registration status
+      description: Returns availability flag indicating whether this email is unused and available for signup.
+      operationId: checkEmail
+      security: []
+      parameters:
+        - name: email
+          in: query
+          required: true
+          description: Email address to search for duplicate registrations.
+          schema:
+            type: string
+            format: email
+            example: jane.doe@acme.com
+      responses:
+        '200':
+          description: Email search processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '400':
+          description: Invalid email format parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /check-slug:
+    get:
+      summary: Check organization slug registration status
+      description: Returns availability flag indicating whether the slug is unused and available for organizations creation.
+      operationId: checkSlug
+      security: []
+      parameters:
+        - name: slug
+          in: query
+          required: true
+          description: URL slug segment context to evaluate.
+          schema:
+            type: string
+            example: acme-global
+      responses:
+        '200':
+          description: Slug checking processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '400':
+          description: Invalid slug formatting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /validate-token:
+    post:
+      summary: Validate JWT token context
+      description: Decrypts and validates authentication tokens. Designed as a secure microservice endpoint for NGINX/Gateway authentication sweeps.
+      operationId: validateToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateTokenRequest'
+      responses:
+        '200':
+          description: Token check finished. If 'valid' is false, it means token has expired or is cryptographically incorrect.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateTokenResponse'
+        '400':
+          description: Missing or invalid token request structure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Input your JWT Bearer token ("Bearer {token}").
+
+  schemas:
+    RegisterOrganizationRequest:
+      type: object
+      required:
+        - organizationName
+        - organizationSlug
+        - adminFirstName
+        - adminLastName
+        - adminEmail
+        - adminPassword
+      properties:
+        organizationName:
+          type: string
+          example: Acme Global Corp
+          minLength: 3
+          maxLength: 100
+        organizationSlug:
+          type: string
+          example: acme-global
+          pattern: '^[a-z0-9-]+$'
+          description: URL-friendly identifier for login context.
+        companyEmail:
+          type: string
+          format: email
+          example: contact@acme.com
+        website:
+          type: string
+          format: uri
+          example: https://acme.org
+        country:
+          type: string
+          example: USA
+        timezone:
+          type: string
+          example: America/New_York
+        adminFirstName:
+          type: string
+          example: Jane
+          maxLength: 50
+        adminLastName:
+          type: string
+          example: Doe
+          maxLength: 50
+        adminEmail:
+          type: string
+          format: email
+          example: jane.doe@acme.com
+        adminPassword:
+          type: string
+          format: password
+          example: P@ssw0rdStrength1!
+          description: Must contain at least 8 characters, one uppercase, one lowercase, one number, and one spec character.
+        phone:
+          type: string
+          example: "+1-555-0199"
+
+    RegisterOrganizationResponse:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+          example: d701b2a9-c290-4157-a1f3-e44321f7f6b3
+        organizationSlug:
+          type: string
+          example: acme-global
+        adminId:
+          type: string
+          format: uuid
+          example: f092a9b6-21ee-475d-9b60-33ca3f543e72
+        adminEmail:
+          type: string
+          example: jane.doe@acme.com
+        message:
+          type: string
+          example: Organization created. Please check your email to verify your administrator account.
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: jane.doe@acme.com
+        password:
+          type: string
+          format: password
+          example: P@ssw0rdStrength1!
+
+    JwtAuthResponse:
+      type: object
+      properties:
+        tokenType:
+          type: string
+          example: Bearer
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: Short-lived access signature (expires in 1 hour).
+        refreshToken:
+          type: string
+          example: d97a7ebf-92ea-463c-a7eb-92ea463ca3f5
+          description: UUID or secure token payload for issuing renewals (expires in 7 days).
+        expiresIn:
+          type: integer
+          example: 3600
+          description: Expires time in seconds.
+        user:
+          $ref: '#/components/schemas/UserProfileResponse'
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          example: d97a7ebf-92ea-463c-a7eb-92ea463ca3f5
+
+    ResendVerificationRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: jane.doe@acme.com
+
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: jane.doe@acme.com
+
+    ResetPasswordRequest:
+      type: object
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+          example: pwr_332efc4d30c94bc59ad5d45545bb4677
+        newPassword:
+          type: string
+          format: password
+          example: NewStr0ngP@ssw0rd!
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - oldPassword
+        - newPassword
+      properties:
+        oldPassword:
+          type: string
+          format: password
+          example: P@ssw0rdStrength1!
+        newPassword:
+          type: string
+          format: password
+          example: NewStr0ngP@ssw0rd!
+
+    UserProfileResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: f092a9b6-21ee-475d-9b60-33ca3f543e72
+        organizationId:
+          type: string
+          format: uuid
+          example: d701b2a9-c290-4157-a1f3-e44321f7f6b3
+        organizationName:
+          type: string
+          example: Acme Global Corp
+        firstName:
+          type: string
+          example: Jane
+        lastName:
+          type: string
+          example: Doe
+        email:
+          type: string
+          example: jane.doe@acme.com
+        phone:
+          type: string
+          example: "+1-555-0199"
+        profileImage:
+          type: string
+          example: https://secure.gravatar.com/avatar/jane_doe.png
+        roles:
+          type: array
+          items:
+            type: string
+          example: ["ORG_ADMIN"]
+        emailVerified:
+          type: boolean
+          example: true
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+          example: true
+
+    ValidateTokenRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    ValidateTokenResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          example: true
+        userId:
+          type: string
+          format: uuid
+          example: f092a9b6-21ee-475d-9b60-33ca3f543e72
+        organizationId:
+          type: string
+          format: uuid
+          example: d701b2a9-c290-4157-a1f3-e44321f7f6b3
+        roles:
+          type: array
+          items:
+            type: string
+          example: ["ORG_ADMIN"]
+
+    SimpleMessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Operation completed successfully.
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-07-18T15:00:00.000Z
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Validation failed for one or more fields.
+        path:
+          type: string
+          example: /api/auth/register-organization
+        details:
+          type: array
+          items:
+            type: string
+          example: ["adminPassword must contain at least one special character.", "organizationSlug must be lowercase alphanumeric and hyphens only."]

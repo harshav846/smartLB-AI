@@ -1,0 +1,11 @@
+package com.smartlb.backend5;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BackendServer5Application {
+    public static void main(String[] args) {
+        SpringApplication.run(BackendServer5Application.class, args);
+    }
+}

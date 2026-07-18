@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  database:
+    environment:
+      POSTGRES_DB: smartlb
+      POSTGRES_USER: smartlb_root
+      POSTGRES_PASSWORD: password
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  api-gateway:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-8080}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  auth-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT:-8081}
+
+  customer-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - TENANT_SERVICE_PORT=${TENANT_SERVICE_PORT:-8082}
+
+  admin-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - ADMIN_SERVICE_PORT=${ADMIN_SERVICE_PORT:-8083}
+
+  loadbalancer-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
+      - LOADBALANCER_SERVICE_PORT=${LOADBALANCER_SERVICE_PORT:-8084}
+    deploy:
+      replicas: 2
+
+  monitoring-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - MONITORING_SERVICE_PORT=${MONITORING_SERVICE_PORT:-8085}
+
+  autoscaling-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_URL=${DATABASE_URL}
+      - AUTOSCALING_SERVICE_PORT=${AUTOSCALING_SERVICE_PORT:-8086}
+
+  ai-service:
+    environment:
+      - ENV=prod
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-8000}
+      - DATABASE_URL=${DATABASE_URL}
+
+  nginx:
+    ports:
+      - "${NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "443:443"
+    environment:
+      - NGINX_PORT=${NGINX_PORT:-80}
+      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-8080}
+    restart: always
+
+  backend-server-1:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - BACKEND_PORT=5001
+      - SERVER_INSTANCE=1
+
+  backend-server-2:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - BACKEND_PORT=5002
+      - SERVER_INSTANCE=2
+
+  backend-server-3:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - BACKEND_PORT=5003
+      - SERVER_INSTANCE=3
+
+  backend-server-4:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - BACKEND_PORT=5004
+      - SERVER_INSTANCE=4
+
+  backend-server-5:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - BACKEND_PORT=5005
+      - SERVER_INSTANCE=5
