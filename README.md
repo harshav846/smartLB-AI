@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SmartLB-AI: AI-Driven Multi-Tenant Load Balancer as a Service
 
 SmartLB-AI is a production-grade SaaS application designed to manage multi-tenant HTTPs load balancing with real-time analytics, autoscaling, and AI-enabled traffic routing.
@@ -77,3 +78,6 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
+=======
+# smartLB-AI
+>>>>>>> a3cb0f811d0c1f2abdcef29bb2ed78db2471cbbf
