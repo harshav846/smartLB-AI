@@ -68,15 +68,13 @@ class ApplicationInstanceServiceTest {
                 .consecutiveFailures(0)
                 .build();
         existingInstance.setId(instanceId);
-
-        // Allow SSRF validation to pass by default for all tests
-        doNothing().when(ssrfValidator).validateTarget(any(), any(Integer.class));
     }
 
 
     @Test
     @DisplayName("Should successfully register a new application instance")
     void testRegisterInstanceSuccess() {
+        doNothing().when(ssrfValidator).validateTarget(any(), any(Integer.class));
         RegisterInstanceRequest request = RegisterInstanceRequest.builder()
                 .name("backend-srv-2")
                 .host("10.0.0.2")
@@ -107,6 +105,7 @@ class ApplicationInstanceServiceTest {
     @Test
     @DisplayName("Should throw DuplicateResourceException when instance name already exists for organization")
     void testRegisterDuplicateNameThrows() {
+        doNothing().when(ssrfValidator).validateTarget(any(), any(Integer.class));
         RegisterInstanceRequest request = RegisterInstanceRequest.builder()
                 .name("backend-srv-1")
                 .host("10.0.0.5")
@@ -122,6 +121,7 @@ class ApplicationInstanceServiceTest {
     @Test
     @DisplayName("Should throw DuplicateResourceException when instance host and port already exist for organization")
     void testRegisterDuplicateHostPortThrows() {
+        doNothing().when(ssrfValidator).validateTarget(any(), any(Integer.class));
         RegisterInstanceRequest request = RegisterInstanceRequest.builder()
                 .name("backend-srv-unique")
                 .host("10.0.0.1")
