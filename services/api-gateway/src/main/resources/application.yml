@@ -4,21 +4,79 @@ server:
 spring:
   application:
     name: api-gateway
-  datasource:
-    url: ${DATABASE_URL}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:5173"
+              - "http://127.0.0.1:3000"
+              - "http://127.0.0.1:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        - id: auth-service-route
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
 
-# JJWT settings (Access / Refresh tokens with configurable expiration times and HS256 signing)
+        - id: customer-service-route
+          uri: ${CUSTOMER_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/customer/**
+
+        - id: admin-service-route
+          uri: ${ADMIN_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/admin/**
+
+        - id: loadbalancer-management-route
+          uri: ${LOADBALANCER_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/lb/**, /api/instances/**
+
+        - id: loadbalancer-proxy-route
+          uri: ${LOADBALANCER_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/proxy/**
+
+        - id: monitoring-service-route
+          uri: ${MONITORING_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/monitoring/**
+
+        - id: autoscaling-service-route
+          uri: ${AUTOSCALING_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/autoscaling/**
+
+        - id: ai-service-route
+          uri: ${AI_SERVICE_URL:http://localhost:8000}
+          predicates:
+            - Path=/api/v1/ai/**
+
 security:
   jwt:
-    secret: ${JWT_SECRET}
-    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
-    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
-    signing-algorithm: HS256
+    secret: ${JWT_SECRET:dGhpc2lzYWZha2VzZWNyZXRrZXlmb3J0ZXN0aW5ncHVycG9zZXNvbmx5c21hcnRsYmFpMTIzNA==}
+
+gateway:
+  rate-limiting:
+    enabled: ${RATE_LIMITING_ENABLED:true}
+    replenish-rate: ${RATE_LIMIT_REPLENISH:50} # tokens per second
+    burst-capacity: ${RATE_LIMIT_BURST:100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
