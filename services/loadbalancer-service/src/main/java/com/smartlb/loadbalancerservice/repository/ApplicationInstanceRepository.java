@@ -33,5 +33,8 @@ public interface ApplicationInstanceRepository extends JpaRepository<Application
 
     boolean existsByHostAndPortAndOrganizationIdAndDeletedAtIsNull(String host, Integer port, UUID organizationId);
 
+    @Query("SELECT a FROM ApplicationInstance a WHERE a.status = 'ACTIVE' AND a.healthStatus = 'HEALTHY' AND a.deletedAt IS NULL")
+    List<ApplicationInstance> findAllHealthyInstances();
+
     List<ApplicationInstance> findAllByStatusAndDeletedAtIsNull(InstanceStatus status);
 }
