@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * MapStruct mapper for converting User entity and profile DTO structures.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true))
 public interface UserMapper {
 
     /**

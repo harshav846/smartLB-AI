@@ -14,6 +14,17 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # JJWT settings (Access / Refresh tokens with configurable expiration times and HS256 signing)
 security:
@@ -22,3 +33,14 @@ security:
     access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
     refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
     signing-algorithm: HS256
+
+# Application-level settings
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8081}
+  email:
+    from: ${MAIL_FROM:noreply@smartlb.ai}
+    verification-path: /api/v1/auth/verify-email
+    reset-password-path: /api/v1/auth/reset-password
+  security:
+    max-failed-login-attempts: 5
+    refresh-token-expiration-ms: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}

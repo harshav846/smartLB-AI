@@ -5,8 +5,10 @@ spring:
   application:
     name: loadbalancer-service
   datasource:
-    url: ${DATABASE_URL}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/smartlb}
     driver-class-name: org.postgresql.Driver
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,7 +20,22 @@ spring:
 # JJWT settings (Access / Refresh tokens with configurable expiration times and HS256 signing)
 security:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:dGhpc2lzYWZha2VzZWNyZXRrZXlmb3J0ZXN0aW5ncHVycG9zZXNvbmx5c21hcnRsYmFpMTIzNA==}
     access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
     refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
     signing-algorithm: HS256
+
+# Health Check Settings
+app:
+  health-check:
+    enabled: ${HEALTH_CHECK_ENABLED:true}
+    interval-ms: ${INSTANCE_HEALTH_CHECK_INTERVAL:30000}
+    failure-threshold: ${INSTANCE_HEALTH_FAILURE_THRESHOLD:3}
+    timeout-ms: ${INSTANCE_HEALTH_TIMEOUT_MS:3000}
+  proxy:
+    connect-timeout-ms: ${PROXY_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${PROXY_READ_TIMEOUT_MS:30000}
+    max-retries: ${PROXY_MAX_RETRIES:1}
+  security:
+    ssrf:
+      allow-loopback: ${SSRF_ALLOW_LOOPBACK:true}

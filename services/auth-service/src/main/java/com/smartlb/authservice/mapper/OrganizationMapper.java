@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 /**
  * MapStruct mapper for converting Organization entity and corresponding DTO structures.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", builder = @org.mapstruct.Builder(disableBuilder = true))
 public interface OrganizationMapper {
 
     /**
